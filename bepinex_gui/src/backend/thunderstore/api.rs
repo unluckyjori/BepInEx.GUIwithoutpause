@@ -60,11 +60,11 @@ fn find_modding_discord_from_target_process_name(
             .name
             .map(|n| n.to_lowercase())
             .ok_or("failed lowercasing")?;
-
+        //Err value is the LC discord as a backup for it not working do note
         if proc_name.contains(&community_name_lower) || community_name_lower.contains(&proc_name) {
             match community.discord_url {
                 Some(discord_url) => return Ok(discord_url),
-                None => return Err("no discord url".into()),
+                None => return Err("community does not contain a discord server".into()),
             }
         }
     }

@@ -192,8 +192,8 @@ pub fn get_dark_theme() -> egui::Style {
 pub fn configure_fonts(ctx: &Context) {
     let mut font_def = FontDefinitions::default();
     font_def.font_data.insert(
-        "Comfortaa".to_string(),
-        FontData::from_static(include_bytes!("../assets/fonts/Comfortaa-Medium.ttf")),
+        "NotoSansMono".to_string(),
+        FontData::from_static(include_bytes!("../assets/fonts/NotoSansMono-Medium.ttf")),
         // FontData::from_static(include_bytes!("../assets/fonts/MesloLGS_NF_Regular.ttf")),
     );
 
@@ -201,7 +201,7 @@ pub fn configure_fonts(ctx: &Context) {
         .families
         .get_mut(&FontFamily::Proportional)
         .unwrap()
-        .insert(0, "Comfortaa".to_string());
+        .insert(0, "NotoSansMono".to_string());
 
     ctx.set_fonts(font_def);
 }

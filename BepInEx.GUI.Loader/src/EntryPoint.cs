@@ -5,8 +5,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using BepInEx.Configuration;
 using System.Reflection;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using Mono.Cecil;
 
@@ -21,7 +21,6 @@ internal static class EntryPoint
     public static void Initialize()
     {
         Log.Init();
-
         try
         {
             InitializeInternal();
@@ -36,36 +35,66 @@ internal static class EntryPoint
     {
         Config.Init(Paths.ConfigPath);
 
+        //string str = "[Logging.Console]\r\n\r\n" +
+        //"## Enables showing a console for log output.\r\n# Setting type: Boolean\r\n# Default value: false\r\nEnabled = ";
+
+        //List<string> list = Config.GetEditedContent($"{str}true", $"{str}false");
+        //using (StreamWriter file = new StreamWriter(Paths.BepInExConfigPath))
+        //{
+        //    foreach (string listItem in list)
+        //    {
+        //        file.WriteLine(listItem);
+        //    }
+        //    file.Close();
+        //}
+        //Log.Warning("Disabled old console restart game for changes to take effect");
         var consoleConfig = (ConfigEntry<bool>)typeof(BepInPlugin).Assembly.
             GetType("BepInEx.ConsoleManager", true).
             GetField("ConfigConsoleEnabled",
             BindingFlags.Static | BindingFlags.Public).GetValue(null);
-
-        if (consoleConfig.Value)
+        if (!Config.EnableBepInExGUIConfig.Value)
         {
-            Log.Info("BepInEx regular console is enabled, aborting launch.");
+            Log.Info("Custom BepInEx.GUI is disabled in the config, aborting launch.");
         }
-        else if (Config.EnableBepInExGUIConfig.Value)
+        else if (consoleConfig.Value)
         {
-            FindAndLaunchGUI();
+            consoleConfig.Value = false;
+            Log.Warning("Disabled old console restart game for changes to take effect");
         }
         else
         {
-            Log.Info("Custom BepInEx.GUI is disabled in the config, aborting launch.");
+            FindAndLaunchGUI();
         }
     }
 
     private static string FindGUIExecutable()
     {
+        const string GuiFileName = "bepinex_gui";
+        string modName = Config.ThunderstoreModNameConfig.Value;
+        string autherName = Config.AutherNameConfig.Value;
+        string str = $"{Paths.PatcherPluginPath}\\{autherName}-{modName}\\{GuiFileName}.exe";
+        var fileName = Path.GetFileName(str);
+        if (fileName == $"{GuiFileName}.exe")
+        {
+            var versInfo = FileVersionInfo.GetVersionInfo(str);
+            if (versInfo.FileMajorPart == 3)
+            {
+                Log.Info($"Found bepinex_gui v3 executable in {str}");
+                return str;
+            }
+        }
+        //if not find returns null
+        return SearchForGuiExecuteable();
+    }
+    public static string SearchForGuiExecuteable()
+    {
+        const string GuiFileName = "bepinex_gui";
         foreach (var filePath in Directory.GetFiles(Paths.PatcherPluginPath, "*", SearchOption.AllDirectories))
         {
-            var fileName = Path.GetFileName(filePath);
-
-            const string GuiFileName = "bepinex_gui";
-
             // No platform check because proton is used for RoR2 and it handles it perfectly anyway:
             // It makes the Process.Start still goes through proton and makes the bep gui
             // that was compiled for Windows works fine even in linux operating systems.
+            var fileName = Path.GetFileName(filePath);
 
             if (fileName == $"{GuiFileName}.exe")
             {
@@ -77,7 +106,6 @@ internal static class EntryPoint
                 }
             }
         }
-
         return null;
     }
 
@@ -135,25 +163,11 @@ internal static class EntryPoint
             $"\"{typeof(Paths).Assembly.GetName().Version}\" " +
             $"\"{Paths.ProcessName}\" " +
             $"\"{Paths.GameRootPath}\" " +
-            $"\"{GetLogOutputFilePath()}\" " +
+            $"\"{Paths.BepInExRootPath}\\LogOutput.log\" " +
             $"\"{Config.ConfigFilePath}\" " +
             $"\"{Process.GetCurrentProcess().Id}\" " +
             $"\"{socketPort}\"";
 
         return Process.Start(processStartInfo);
-    }
-
-    // Bad and hacky way to retrieve the correct log file path
-    private static string GetLogOutputFilePath()
-    {
-        foreach (var logListener in Logger.Listeners)
-        {
-            if (logListener is DiskLogListener diskLogListener)
-            {
-                return diskLogListener.FileFullPath;
-            }
-        }
-
-        return "";
     }
 }

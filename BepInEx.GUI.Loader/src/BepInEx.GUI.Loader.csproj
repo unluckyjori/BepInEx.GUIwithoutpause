@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>preview</LangVersion>
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -16,15 +16,31 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
-
   <ItemGroup>
+
     <Reference Include="BepInEx">
-      <HintPath>..\..\..\BepInEx\bin\BepInEx.dll</HintPath>
+      <HintPath>D:\Program Files (x86)\Games\r2modmanPlus-local\LethalCompany\profiles\Default\BepInEx\core\BepInEx.dll</HintPath>
     </Reference>
 
 	  <Reference Include="Mono.Cecil">
-		  <HintPath>..\..\..\BepInEx\bin\Mono.Cecil.dll</HintPath>
+		  <HintPath>D:\Program Files (x86)\Games\r2modmanPlus-local\LethalCompany\profiles\Default\BepInEx\core\Mono.Cecil.dll</HintPath>
+	  </Reference>
+      
+
+      <Reference Include="UnityEngine">
+	    <HintPath>..\..\..\LethalProgression\LethalProgression\bin\Debug\netstandard2.1\UnityEngine.dll</HintPath>
+	  </Reference>
+
+	  <Reference Include="UnityEngine.CoreModule">
+	    <HintPath>..\..\..\LethalProgression\LethalProgression\bin\Debug\netstandard2.1\UnityEngine.CoreModule.dll</HintPath>
 	  </Reference>
   </ItemGroup>
-
+  <!--
+    <Reference Include="BepInEx">
+      <HintPath>D:\Program Files (x86)\Games\r2modmanPlus-local\RiskOfRain2\profiles\Default\BepInEx\core\BepInEx.dll</HintPath>
+    </Reference>
+	  <Reference Include="Mono.Cecil">
+		  <HintPath>D:\Program Files (x86)\Games\r2modmanPlus-local\RiskOfRain2\profiles\Default\BepInEx\core\Mono.Cecil.dll</HintPath>
+	  </Reference>
+  -->
 </Project>
