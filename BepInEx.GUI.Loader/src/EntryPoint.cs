@@ -35,19 +35,6 @@ internal static class EntryPoint
     {
         Config.Init(Paths.ConfigPath);
 
-        //string str = "[Logging.Console]\r\n\r\n" +
-        //"## Enables showing a console for log output.\r\n# Setting type: Boolean\r\n# Default value: false\r\nEnabled = ";
-
-        //List<string> list = Config.GetEditedContent($"{str}true", $"{str}false");
-        //using (StreamWriter file = new StreamWriter(Paths.BepInExConfigPath))
-        //{
-        //    foreach (string listItem in list)
-        //    {
-        //        file.WriteLine(listItem);
-        //    }
-        //    file.Close();
-        //}
-        //Log.Warning("Disabled old console restart game for changes to take effect");
         var consoleConfig = (ConfigEntry<bool>)typeof(BepInPlugin).Assembly.
             GetType("BepInEx.ConsoleManager", true).
             GetField("ConfigConsoleEnabled",
