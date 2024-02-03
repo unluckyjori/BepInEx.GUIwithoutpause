@@ -31,21 +31,6 @@ internal static class Config
 
     internal const string ThunderstoreModNameConfigKey = "Thunderstore Mod Name";
     internal const string ThunderstoreModNameConfigDescription = $"To Change The Thunderstore Mod Name For Finding the Executable{Disclaimer}";
-    public static List<string> GetEditedContent(string word, string replacement)
-    {
-        List<string> list = new List<string>();
-        using (StreamReader reader = new StreamReader(Paths.BepInExConfigPath))
-        {
-            string line;
-            while ((line = reader.ReadLine()) != null)
-            {
-                line = line.Replace(word, replacement);
-                list.Add(line);
-            }
-            reader.Close();
-        }
-        return list;
-    }
     internal static void Init(string folderFullPath)
     {
         ConfigFilePath = Path.Combine(folderFullPath, FileName);
