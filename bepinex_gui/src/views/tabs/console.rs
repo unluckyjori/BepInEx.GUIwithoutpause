@@ -1,13 +1,12 @@
 use clipboard::*;
 use crossbeam_channel::Receiver;
 use eframe::{egui::*, *};
+
 use std::{
-    collections::HashMap,
-    sync::{
+    collections::HashMap, sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
-    },
-    time::SystemTime,
+    }, time::SystemTime
 };
 
 use crate::{
@@ -95,6 +94,7 @@ impl LogSelection {
 struct Filter {
     text: String,
     text_lowercase: String,
+    bepinex_mod: BepInExMod,
     pub selected_index_in_mods_combo_box: usize,
 }
 
@@ -104,10 +104,6 @@ struct Scroll {
 }
 
 pub struct ConsoleTab {
-    disclaimer: Disclaimer,
-    log_selection: LogSelection,
-    filter: Filter,
-    scroll: Scroll,
     target_process_paused: bool,
     mod_receiver: Receiver<BepInExMod>,
     mods: Vec<BepInExMod>,
@@ -115,6 +111,10 @@ pub struct ConsoleTab {
     logs: Vec<BepInExLogEntry>,
     should_exit_app: Arc<AtomicBool>,
     log_heights: HashMap<usize, f32>,
+    disclaimer: Disclaimer,
+    log_selection: LogSelection,
+    filter: Filter,
+    scroll: Scroll,
 }
 
 impl ConsoleTab {
@@ -124,6 +124,13 @@ impl ConsoleTab {
         should_exit_app: Arc<AtomicBool>,
     ) -> Self {
         Self {
+            target_process_paused: false,
+            mod_receiver,
+            mods: vec![BepInExMod::new("", "")],
+            log_receiver,
+            logs: vec![],
+            should_exit_app,
+            log_heights: HashMap::new(),
             disclaimer: Disclaimer {
                 first_time_showing_it: true,
                 time_when_disclaimer_showed_up: None,
@@ -139,19 +146,14 @@ impl ConsoleTab {
             filter: Filter {
                 text: Default::default(),
                 text_lowercase: Default::default(),
+                bepinex_mod: BepInExMod::new("", ""),
                 selected_index_in_mods_combo_box: 0,
             },
             scroll: Scroll {
                 last_log_count: 0,
                 pending_scroll: None,
             },
-            target_process_paused: false,
-            mod_receiver,
-            mods: vec![BepInExMod::new("", "")],
-            log_receiver,
-            logs: vec![],
-            should_exit_app,
-            log_heights: HashMap::new(),
+            
         }
     }
 
@@ -183,7 +185,6 @@ impl ConsoleTab {
                     self.scroll.pending_scroll = None;
                 }
             });
-
         self.auto_scroll_to_selection(&scroll_area, ui);
     }
 
@@ -241,11 +242,23 @@ impl ConsoleTab {
                 self.log_selection.index_of_last_selected_log,
             );
         }
-
+        let last_log_count = self.scroll.last_log_count;
+        let log_level_filter = &gui_config.log_level_filter;
+        let log_lowercase_text_filter = &self.filter.text_lowercase;
+        let log_mod_filter = &self.filter.bepinex_mod;
         if gui_config.log_auto_scroll_to_bottom
-            && self.scroll.last_log_count != log_count
+            && last_log_count != log_count
             && !self.log_selection.button_just_got_down
         {
+            for i in last_log_count..log_count {
+                let log = &mut self.logs[i];
+                if  && log.level() > &log_level_filter
+                && !Self::does_log_match_text_filter(log_lowercase_text_filter, log)
+                && !Self::does_log_match_mod_filter(log_mod_filter, log) {
+                    self.scroll.last_log_count =  log_count;
+                    return;
+                }
+            }
             ui.scroll_with_delta(Vec2::new(0., f32::NEG_INFINITY));
             self.scroll.last_log_count = log_count;
         }
@@ -330,7 +343,34 @@ impl ConsoleTab {
 
         true
     }
-
+    fn does_log_match_mod_filter(mod_filter: &BepInExMod, log: &BepInExLogEntry) -> bool {
+        let none = "";
+        let name = mod_filter.name();
+        let mod_name = &name.to_lowercase();
+        if mod_name == none
+        {
+            return true;
+        }
+        let logger = Self::get_real_name(String::from(mod_name));
+        
+        
+        false
+        
+    }
+    fn remove_whitespace(string: &mut String) -> String {
+        let s = string.as_mut_str();
+        return String::from(s.replace(" ", ""));
+    }
+    fn get_real_name(string: String) -> String {
+        if let Some((name, _log_info)) = string.split_once(':'){
+            if let Some((logger, _message)) = name.split_once(']') {
+                let mut logger_name = Self::remove_whitespace(logger());
+            logger_name.remove(logger_name.len() -1);
+            return logger_name;
+            }
+        }
+        return String::from("");
+    }
     fn render_footer(&mut self, data: &AppLaunchConfig, gui_config: &mut Config, ctx: &Context) {
         TopBottomPanel::bottom("footer").show(ctx, |ui| {
             ui.add_space(2.0);
@@ -492,15 +532,8 @@ Please use the buttons below and use the "Copy Log File" button, and drag and dr
             );
 
         if mods_combo_box.changed() {
-            self.filter.text = if self.filter.selected_index_in_mods_combo_box == 0 {
-                String::new()
-            } else {
-                self.mods[self.filter.selected_index_in_mods_combo_box]
-                    .name()
-                    .to_string()
-            };
-
-            self.filter.text_lowercase = self.filter.text.to_lowercase();
+            let i = self.filter.selected_index_in_mods_combo_box;
+            self.filter.bepinex_mod = BepInExMod::copy(&self.mods[i]);
         }
         mods_combo_box
     }

@@ -11,7 +11,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" />
     <PackageReference Include="Microsoft.Unity.Analyzers" Version="1.10.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="UnityEngine.Modules" Version="2022.3.9">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -24,15 +29,6 @@
 
 	  <Reference Include="Mono.Cecil">
 		  <HintPath>D:\Program Files (x86)\Games\r2modmanPlus-local\LethalCompany\profiles\Default\BepInEx\core\Mono.Cecil.dll</HintPath>
-	  </Reference>
-      
-
-      <Reference Include="UnityEngine">
-	    <HintPath>..\..\..\LethalProgression\LethalProgression\bin\Debug\netstandard2.1\UnityEngine.dll</HintPath>
-	  </Reference>
-
-	  <Reference Include="UnityEngine.CoreModule">
-	    <HintPath>..\..\..\LethalProgression\LethalProgression\bin\Debug\netstandard2.1\UnityEngine.CoreModule.dll</HintPath>
 	  </Reference>
   </ItemGroup>
   <!--

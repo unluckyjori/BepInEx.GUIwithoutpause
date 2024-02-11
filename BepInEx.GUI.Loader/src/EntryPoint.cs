@@ -59,8 +59,9 @@ internal static class EntryPoint
         const string GuiFileName = "bepinex_gui";
         string modName = Config.ThunderstoreModNameConfig.Value;
         string autherName = Config.AutherNameConfig.Value;
+        string GuiPath = $"{Paths.PatcherPluginPath}\\{autherName}-{modName}\\";
         string str = $"{Paths.PatcherPluginPath}\\{autherName}-{modName}\\{GuiFileName}.exe";
-        var fileName = Path.GetFileName(str);
+        var fileName = Path.GetFileName(GuiPath);
         if (fileName == $"{GuiFileName}.exe")
         {
             var versInfo = FileVersionInfo.GetVersionInfo(str);
@@ -86,6 +87,7 @@ internal static class EntryPoint
             if (fileName == $"{GuiFileName}.exe")
             {
                 var versInfo = FileVersionInfo.GetVersionInfo(filePath);
+                //versInfo.GetType().GetField()
                 if (versInfo.FileMajorPart == 3)
                 {
                     Log.Info($"Found bepinex_gui v3 executable in {filePath}");
@@ -142,19 +144,28 @@ internal static class EntryPoint
 
     private static Process LaunchGUI(string executablePath, int socketPort)
     {
-        var processStartInfo = new ProcessStartInfo();
-        processStartInfo.FileName = executablePath;
+        string[] args =
+        [
+            typeof(Paths).Assembly.GetName().Version.ToString(),//arg[1] Version
+            Paths.ProcessName,                                  //arg[2] Target name
+            Paths.GameRootPath,                                 //arg[3] Game folder -P -F
+            $"{Paths.BepInExRootPath}\\LogOutput.log",          //arg[4] BepInEx output -P -F
+            Config.ConfigFilePath,                              //arg[5] ConfigPath
+            Process.GetCurrentProcess().Id.ToString(),          //arg[6] Process Id
+            socketPort.ToString(),                              //arg[7] socket port reciver
+           // Process.GetCurrentProcess().Handle.ToString(),
+        ];
+        var processStartInfo = new ProcessStartInfo(fileName: executablePath, FormatArguments(args));
         processStartInfo.WorkingDirectory = Path.GetDirectoryName(executablePath);
 
-        processStartInfo.Arguments =
-            $"\"{typeof(Paths).Assembly.GetName().Version}\" " +
-            $"\"{Paths.ProcessName}\" " +
-            $"\"{Paths.GameRootPath}\" " +
-            $"\"{Paths.BepInExRootPath}\\LogOutput.log\" " +
-            $"\"{Config.ConfigFilePath}\" " +
-            $"\"{Process.GetCurrentProcess().Id}\" " +
-            $"\"{socketPort}\"";
-
-        return Process.Start(processStartInfo);
+        return Process.GetCurrentProcess();
+    }
+    private static string FormatArguments(this string[] args, int i = 0)
+    {
+        if (i == args.Length - 1)
+        {
+            return $"\"{args[i]}\"";
+        }
+        return $"\"{args[i]}\" {FormatArguments(args, ++i)}";
     }
 }
