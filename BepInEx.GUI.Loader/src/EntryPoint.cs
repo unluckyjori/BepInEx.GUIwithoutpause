@@ -153,12 +153,17 @@ internal static class EntryPoint
             Config.ConfigFilePath,                              //arg[5] ConfigPath
             Process.GetCurrentProcess().Id.ToString(),          //arg[6] Process Id
             socketPort.ToString(),                              //arg[7] socket port reciver
-           // Process.GetCurrentProcess().Handle.ToString(),
         ];
-        var processStartInfo = new ProcessStartInfo(fileName: executablePath, FormatArguments(args));
-        processStartInfo.WorkingDirectory = Path.GetDirectoryName(executablePath);
-
-        return Process.GetCurrentProcess();
+        var processStartInfo = new ProcessStartInfo(fileName: executablePath, FormatArguments(args))
+        {
+            UseShellExecute = false,
+            FileName = "BepInEx GUI",
+            CreateNoWindow = true,
+            WorkingDirectory =
+                Path.GetFullPath(Process.GetCurrentProcess().GetType().Assembly.Location)
+        };
+        processStartInfo.EnvironmentVariables.Add("PATH", Path.GetFullPath(executablePath));// .../GUI.exe
+        return Process.Start(processStartInfo);
     }
     private static string FormatArguments(this string[] args, int i = 0)
     {

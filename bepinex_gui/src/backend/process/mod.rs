@@ -29,7 +29,7 @@ pub fn for_each_thread(target_process_id: Pid, callback: impl Fn(HANDLE)) -> boo
 
     unsafe {
         let sys = sysinfo::System::new_all();
-
+       
         if sys.process(target_process_id).is_some() {
             let thread_snapshot =
                 winapi::um::tlhelp32::CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);

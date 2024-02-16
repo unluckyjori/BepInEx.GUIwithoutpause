@@ -3,7 +3,7 @@ use crossbeam_channel::Receiver;
 use eframe::{egui::*, *};
 
 use std::{
-    collections::HashMap, sync::{
+    collections::HashMap, ops::Index, sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     }, time::SystemTime
@@ -94,7 +94,6 @@ impl LogSelection {
 struct Filter {
     text: String,
     text_lowercase: String,
-    bepinex_mod: BepInExMod,
     pub selected_index_in_mods_combo_box: usize,
 }
 
@@ -126,7 +125,7 @@ impl ConsoleTab {
         Self {
             target_process_paused: false,
             mod_receiver,
-            mods: vec![BepInExMod::new("", "")],
+            mods: vec![BepInExMod::new(String::new(), String::new())],
             log_receiver,
             logs: vec![],
             should_exit_app,
@@ -146,7 +145,6 @@ impl ConsoleTab {
             filter: Filter {
                 text: Default::default(),
                 text_lowercase: Default::default(),
-                bepinex_mod: BepInExMod::new("", ""),
                 selected_index_in_mods_combo_box: 0,
             },
             scroll: Scroll {
@@ -223,8 +221,11 @@ impl ConsoleTab {
         };
 
         let log_count = self.logs.len();
+        let last_log_count = self.scroll.last_log_count;
+        let mut filtered = false;
         for i in 0..log_count {
-            Self::render_log(
+            if  i > last_log_count 
+            &&  Self::render_log(
                 &mut self.log_heights,
                 &mut self.filter,
                 gui_config,
@@ -234,33 +235,23 @@ impl ConsoleTab {
                 &clip_rect,
                 &mut self.log_selection,
                 &mut self.logs[i],
-            );
-
+                &self.mods) { 
+                    filtered = true;
+                }
             self.logs[i].is_selected = is_between(
                 i,
                 self.log_selection.index_of_first_selected_log,
                 self.log_selection.index_of_last_selected_log,
             );
         }
-        let last_log_count = self.scroll.last_log_count;
-        let log_level_filter = &gui_config.log_level_filter;
-        let log_lowercase_text_filter = &self.filter.text_lowercase;
-        let log_mod_filter = &self.filter.bepinex_mod;
         if gui_config.log_auto_scroll_to_bottom
             && last_log_count != log_count
             && !self.log_selection.button_just_got_down
         {
-            for i in last_log_count..log_count {
-                let log = &mut self.logs[i];
-                if  && log.level() > &log_level_filter
-                && !Self::does_log_match_text_filter(log_lowercase_text_filter, log)
-                && !Self::does_log_match_mod_filter(log_mod_filter, log) {
-                    self.scroll.last_log_count =  log_count;
-                    return;
-                }
+            if !filtered {
+                ui.scroll_with_delta(Vec2::new(0., f32::NEG_INFINITY));
+                self.scroll.last_log_count = log_count;
             }
-            ui.scroll_with_delta(Vec2::new(0., f32::NEG_INFINITY));
-            self.scroll.last_log_count = log_count;
         }
     }
 
@@ -298,13 +289,17 @@ impl ConsoleTab {
         clip_rect: &Rect,
         log_selection: &mut LogSelection,
         log: &mut BepInExLogEntry,
-    ) {
+        mods: &Vec<BepInExMod>,
+    ) -> bool {
         if log.level() > gui_config.log_level_filter {
-            return;
+            return false;
         }
 
         if !Self::does_log_match_text_filter(&filter.text_lowercase, log) {
-            return;
+            return false;
+        }
+        if !Self::does_log_match_mod_filter(&mods[filter.selected_index_in_mods_combo_box], log) {
+            return false;
         }
 
         let pos_before_log = ui.next_widget_position();
@@ -317,7 +312,7 @@ impl ConsoleTab {
             ui,
         );
         if log_render_decision == LogRenderDecision::SkipAndFakeRender {
-            return;
+            return false;
         }
 
         let log_color = get_color_from_log_level(log, info_log_color);
@@ -332,49 +327,87 @@ impl ConsoleTab {
         }
 
         log_selection.update_selection(&ui_log_entry, clip_rect, ui, i);
+        true
     }
 
     fn does_log_match_text_filter(text_filter_lowercase: &String, log: &BepInExLogEntry) -> bool {
-        if !text_filter_lowercase.is_empty()
-            && !log.data_lowercase().contains(text_filter_lowercase)
-        {
-            return false;
-        }
-
-        true
-    }
-    fn does_log_match_mod_filter(mod_filter: &BepInExMod, log: &BepInExLogEntry) -> bool {
-        let none = "";
-        let name = mod_filter.name();
-        let mod_name = &name.to_lowercase();
-        if mod_name == none
+        if text_filter_lowercase.is_empty()
+            || log.data_lowercase().contains(text_filter_lowercase)
         {
             return true;
         }
-        let logger = Self::get_real_name(String::from(mod_name));
-        
-        
+
         false
-        
     }
-    fn remove_whitespace(string: &mut String) -> String {
-        let s = string.as_mut_str();
-        return String::from(s.replace(" ", ""));
-    }
-    fn get_real_name(string: String) -> String {
-        if let Some((name, _log_info)) = string.split_once(':'){
-            if let Some((logger, _message)) = name.split_once(']') {
-                let mut logger_name = Self::remove_whitespace(logger());
-            logger_name.remove(logger_name.len() -1);
-            return logger_name;
+
+    fn does_log_match_mod_filter(mod_filter: &BepInExMod, log: &BepInExLogEntry) -> bool {
+        let mod_name = &mod_filter.name().to_lowercase();
+        if mod_name.is_empty()
+        {
+            return true;
+        }
+        let logger_name = &Self::get_real_name(log.data_lowercase().as_str());
+        if  logger_name.contains(mod_name) && !logger_name.is_empty()
+        {
+            return true;
+        }
+        if  logger_name.is_empty() {
+            return true;
+        }
+        let mut logger_name_sanitized = String::new();
+        for i in logger_name.chars() {
+            if i != ' ' {
+                logger_name_sanitized.push(i);
             }
         }
-        return String::from("");
+        let mut mod_name_sanitized = String::new();
+        for i in mod_name.chars() {
+            if i != ' ' {
+                mod_name_sanitized.push(i);
+            }
+        }
+        if  logger_name_sanitized.contains(&mod_name_sanitized) {
+            return true;
+        }
+        false
     }
+    pub fn get_real_name(s: &str) -> String {
+        //[Info   :   BepInEx] Loading [CorporateRestructureWeather 1.0.0]
+        //[Info   :   BepInEx] Loading message
+        //[Info   :   BepInEx] Loading [LethalConfig 1.3.4]
+        //if its a bepinex loading mod log
+        if s.contains(":   BepInEx] Loading [") {
+            let split: Vec<&str> = s.split("[").collect();
+            let mod_info_text = split[2];
+            let mod_version_start_index_ = mod_info_text.rfind(' ');
+            if let Some(mod_version_start_index) = mod_version_start_index_ {
+                let mod_name = &mod_info_text[0..mod_version_start_index];
+                return mod_name.to_string();
+            }
+        }
+        if  s.contains('[') {
+            let split: Vec<&str> = s.split("[").collect();
+            let logged_info = split[1];//split[0] == ""// should be at least
+            let log: Vec<&str> = logged_info.split(':').collect();
+            //ainavt.lc.lethalconfig]
+            //Lethal Company Input Utils]
+            let log_info = log[0];
+            let logger = log[1];
+            let logged_info_end_ = log_info.find(']');
+            if let Some(logged_info_end) = logged_info_end_ {
+                let mod_name = &logger[0..logged_info_end - 1];
+                //ainavt.lc.lethalconfig
+                //Lethal Company Input Utils
+                return mod_name.to_string();
+            }
+        }
+        String::new()
+    }
+
+
     fn render_footer(&mut self, data: &AppLaunchConfig, gui_config: &mut Config, ctx: &Context) {
         TopBottomPanel::bottom("footer").show(ctx, |ui| {
             ui.add_space(2.0);
-
             ui.horizontal(|ui| {
                 ui.label(RichText::new("Log Level Filtering: ").font(FontId::proportional(15.0)));
 
@@ -438,7 +471,7 @@ Please use the buttons below and use the "Copy Log File" button, and drag and dr
         });
     }
 
-    fn render_kill_gui_and_game_butto(
+    fn render_kill_gui_and_game_button(
         &mut self,
         ui: &mut Ui,
         pause_game_btn_size: Vec2,
@@ -530,11 +563,6 @@ Please use the buttons below and use the "Copy Log File" button, and drag and dr
                 self.mods.len(),
                 |i| self.mods[i].name(),
             );
-
-        if mods_combo_box.changed() {
-            let i = self.filter.selected_index_in_mods_combo_box;
-            self.filter.bepinex_mod = BepInExMod::copy(&self.mods[i]);
-        }
         mods_combo_box
     }
 }
@@ -623,7 +651,7 @@ impl Tab for ConsoleTab {
 
                 ui.set_cursor(cur_cursor_rect);
 
-                self.render_kill_gui_and_game_butto(ui, pause_game_btn_size, data);
+                self.render_kill_gui_and_game_button(ui, pause_game_btn_size, data);
             });
         });
     }
@@ -656,12 +684,14 @@ impl Tab for ConsoleTab {
     }
 }
 
-fn render_auto_scroll_to_bottom_checkbox(ui: &mut Ui, gui_config: &mut Config) {
-    ui.checkbox(
-        &mut gui_config.log_auto_scroll_to_bottom,
-        "Auto Scroll to Bottom",
-    );
-}
+
+    fn render_auto_scroll_to_bottom_checkbox(ui: &mut Ui, gui_config: &mut Config) {
+        ui.checkbox(
+            &mut gui_config.log_auto_scroll_to_bottom,
+            "Auto Scroll to Bottom",
+        );
+    }
+
 
 impl ConsoleTab {
     fn update_mod_receiver(&mut self) {
