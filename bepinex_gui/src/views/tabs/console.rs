@@ -3,7 +3,7 @@ use crossbeam_channel::Receiver;
 use eframe::{egui::*, *};
 
 use std::{
-    collections::HashMap, ops::Index, sync::{
+    collections::HashMap, sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     }, time::SystemTime

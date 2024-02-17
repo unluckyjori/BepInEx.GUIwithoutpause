@@ -15,6 +15,7 @@ namespace BepInEx.GUI.Loader;
 internal static class EntryPoint
 {
     public static IEnumerable<string> TargetDLLs { get; } = Array.Empty<string>();
+    private readonly static bool TryNoShell = false;
 
     public static void Patch(AssemblyDefinition _) { }
 
@@ -146,23 +147,32 @@ internal static class EntryPoint
     {
         string[] args =
         [
-            typeof(Paths).Assembly.GetName().Version.ToString(),//arg[1] Version
-            Paths.ProcessName,                                  //arg[2] Target name
-            Paths.GameRootPath,                                 //arg[3] Game folder -P -F
-            $"{Paths.BepInExRootPath}\\LogOutput.log",          //arg[4] BepInEx output -P -F
-            Config.ConfigFilePath,                              //arg[5] ConfigPath
-            Process.GetCurrentProcess().Id.ToString(),          //arg[6] Process Id
-            socketPort.ToString(),                              //arg[7] socket port reciver
+            $"{typeof(Paths).Assembly.GetName().Version}", //arg[1] Version
+            $"{Paths.ProcessName}",                        //arg[2] Target name
+            $"{Paths.GameRootPath}",                       //arg[3] Game folder -P -F
+            $"{Paths.BepInExRootPath}\\LogOutput.log",     //arg[4] BepInEx output -P -F
+            $"{Config.ConfigFilePath}",                    //arg[5] ConfigPath
+            $"{Process.GetCurrentProcess().Id}",           //arg[6] Process Id
+            $"{socketPort}",                               //arg[7] socket port reciver
         ];
-        var processStartInfo = new ProcessStartInfo(fileName: executablePath, FormatArguments(args))
+        ProcessStartInfo processStartInfo;
+        if (TryNoShell)
         {
-            UseShellExecute = false,
-            FileName = "BepInEx GUI",
-            CreateNoWindow = true,
-            WorkingDirectory =
-                Path.GetFullPath(Process.GetCurrentProcess().GetType().Assembly.Location)
-        };
-        processStartInfo.EnvironmentVariables.Add("PATH", Path.GetFullPath(executablePath));// .../GUI.exe
+            processStartInfo = new ProcessStartInfo(fileName: executablePath, FormatArguments(args));
+
+            processStartInfo.UseShellExecute = false;
+            processStartInfo.FileName = "BepInEx GUI";
+            processStartInfo.CreateNoWindow = true;
+            processStartInfo.WorkingDirectory = Path.GetFullPath(Paths.ExecutablePath);
+            processStartInfo.EnvironmentVariables.Add("PATH", Path.GetFullPath(executablePath));// .../GUI.exe
+        }
+        else
+        {
+            processStartInfo = new ProcessStartInfo(fileName: "BepInEx GUI", FormatArguments(args));
+            processStartInfo.WorkingDirectory = Path.GetDirectoryName(executablePath);
+            //processStartInfo.UseShellExecute = true;
+            //processStartInfo.CreateNoWindow = true;
+        }
         return Process.Start(processStartInfo);
     }
     private static string FormatArguments(this string[] args, int i = 0)
