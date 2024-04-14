@@ -23,7 +23,7 @@ internal static class Config
             true, CloseWindowWhenGameClosesConfigDescription);
 
         AllowChangingConfigValues = File.Bind(Premissions, AllowChangingConfigValuesKey,
-            true, AllowChangingConfigValuesDescription);
+            false, AllowChangingConfigValuesDescription);
     }
 
     private const string Settings = nameof(Settings);

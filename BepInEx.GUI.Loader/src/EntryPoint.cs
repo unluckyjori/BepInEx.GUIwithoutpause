@@ -6,25 +6,30 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
-using BepInEx.Bootstrap;
 using BepInEx.Configuration;
 using BepInEx.Logging;
+using HarmonyLib;
 using Mono.Cecil;
+
 
 namespace BepInEx.GUI.Loader;
 
 internal static class EntryPoint
 {
-    public static IEnumerable<string> TargetDLLs { get; } = [];
+    public const string GUID = $"{nameof(BepInEx)}.{nameof(GUI)}.{nameof(Loader)}";
+
     public static SendLogToClientSocket GUI_Sender;
-    //public static CloseProcessOnChainloaderDone GUI_CloseWindow;
+    public static IEnumerable<string> TargetDLLs { get; } = [];
 
     private const SearchOption searchOption = SearchOption.AllDirectories;
     private const string GuiFileFullName = "bepinex_gui.exe";
     private const bool OnlySearchGUI_IP_Port = true;
     private const string searchPattern = "*";
+
+    public static Harmony _harmony;
     public static void Patch(AssemblyDefinition _) { }
 
+    // Called before patching occurs
     public static void Initialize()
     {
         Log.Init();
@@ -36,6 +41,14 @@ internal static class EntryPoint
         {
             Log.Error($"Failed to initialize : ({e.GetType()}) {e.Message} {Environment.NewLine}{e}");
         }
+    }
+
+    // Called after preloader has patched all assemblies and loaded them in
+    // At this point it is fine to reference patched assemblies
+    public static void Finish()
+    {
+        _harmony = new Harmony(EntryPoint.GUID);
+        _harmony.PatchAll(typeof(EventArgsPatchTest));
     }
 
     private static void InitializeInternal()
@@ -68,8 +81,6 @@ internal static class EntryPoint
         string executablePath = SearchForGUIExecutable();
         if (executablePath == null)
         {
-            Log.Info("Failed to quick find GUI. ");
-            Log.Info("Initiating Fallback Searching Method for executable in [BepInEx\\patchers, BepInEx\\plugins]");
             executablePath = FallbackSearchForGUIExecuteable();
             if (executablePath == null)
             {
@@ -93,8 +104,8 @@ internal static class EntryPoint
     private static string SearchForGUIExecutable()
     {
         Assembly assembly = typeof(EntryPoint).Assembly;
-        int assemblyFolderIndex = assembly.Location.LastIndexOf('\\') - 1;
-        string exeLocation = $"{assembly.Location[..assemblyFolderIndex]}{GuiFileFullName}";
+        int assemblyFolderIndex = assembly.Location.LastIndexOf('\\');
+        string exeLocation = $"{assembly.Location[..assemblyFolderIndex]}\\{GuiFileFullName}";
         if (IsGUI(exeLocation))
         {
             return exeLocation;
@@ -128,6 +139,8 @@ internal static class EntryPoint
     /// </summary>
     public static string FallbackSearchForGUIExecuteable()
     {
+        Log.Info("Failed to quick find GUI.");
+        Log.Info("Initiating Fallback Searching Method for executable in [BepInEx\\patchers, BepInEx\\plugins]");
         foreach (string file in Directory.GetFiles(Paths.PatcherPluginPath, searchPattern, searchOption))
         {
             if (IsGUI(file))
@@ -171,7 +184,7 @@ internal static class EntryPoint
     {
         string[] argList =
         [
-            $"\"{typeof(Chainloader).Assembly.GetName().Version}\" ", //arg[1] Version
+            $"\"{typeof(Paths).Assembly.GetName().Version}\" ", //arg[1] Version
             $"\"{Paths.ProcessName}\" ",                              //arg[2] Target name
             $"\"{Paths.GameRootPath}\" ",                             //arg[3] Game folder -P -F
             $"\"{Paths.BepInExRootPath}\\LogOutput.log\" ",           //arg[4] BepInEx output -P -F
@@ -190,6 +203,7 @@ internal static class EntryPoint
             WorkingDirectory = Path.GetDirectoryName(executablePath),
             Arguments = args
         };
+
         return Process.Start(processStartInfo);
     }
 }
