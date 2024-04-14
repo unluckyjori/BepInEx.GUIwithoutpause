@@ -21,8 +21,8 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
 
-    let gui =
-        app::BepInExGUI::new(AppLaunchConfig::from(&args).unwrap_or_else(AppLaunchConfig::default));
+    let app_config = AppLaunchConfig::from(&args).unwrap_or_else(AppLaunchConfig::default);
+    let gui = app::BepInExGUI::new(app_config);
 
     let native_options = eframe::NativeOptions {
         min_window_size: Some(Vec2::new(480., 270.)),

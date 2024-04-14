@@ -9,7 +9,6 @@ use std::time::Duration;
 use crossbeam_channel::Receiver;
 
 use views::tabs::{console::ConsoleTab, general::GeneralTab, settings::SettingsTab, Tab};
-
 use crate::backend::{process, window};
 use crate::config::launch::AppLaunchConfig;
 use crate::config::Config;

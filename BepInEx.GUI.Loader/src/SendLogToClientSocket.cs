@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using BepInEx.Logging;
@@ -7,36 +8,31 @@ namespace BepInEx.GUI.Loader;
 
 internal class SendLogToClientSocket : ILogListener
 {
-    private int _freePort;
-
+    private readonly Process _process;
     private readonly Thread _thread;
-
-    private readonly object _queueLock = new();
     private readonly Queue<LogEventArgs> _logQueue = new();
 
+    private readonly object _queueLock = new();
+    private readonly int _freePort;
+
+    private const int SLEEP_MILLISECONDS = 17;
+    private const string GUI_Socket_IP = "127.0.0.1";
     private bool _isDisposed = false;
 
-    internal static SendLogToClientSocket Instance { get; private set; }
-
-    internal SendLogToClientSocket(int freePort)
+    internal SendLogToClientSocket(Process process, int freePort)
     {
-        Instance = this;
-
+        _process = process;
         _freePort = freePort;
-
         _thread = new Thread(() =>
         {
-            var ipAddress = IPAddress.Parse("127.0.0.1");
-
-            var listener = new TcpListener(ipAddress, _freePort);
-
+            IPAddress ipAddress = IPAddress.Parse(GUI_Socket_IP);
+            TcpListener listener = new TcpListener(ipAddress, _freePort);
             listener.Start();
 
             while (true)
             {
                 Log.Info($"[SendLogToClient] Accepting Socket.");
-                var clientSocket = listener.AcceptSocket();
-
+                Socket clientSocket = listener.AcceptSocket();
                 if (_isDisposed)
                 {
                     break;
@@ -49,9 +45,10 @@ internal class SendLogToClientSocket : ILogListener
         _thread.Start();
     }
 
+
     private void SendPacketsToClientUntilConnectionIsClosed(Socket clientSocket)
     {
-        while (true)
+        for (bool i = true; i; Thread.Sleep(SLEEP_MILLISECONDS))
         {
             if (_isDisposed)
             {
@@ -65,15 +62,15 @@ internal class SendLogToClientSocket : ILogListener
                 {
                     log = _logQueue.Peek();
                 }
-                var logPacket = new LogPacket(log);
 
+                LogPacket logPacket = new LogPacket(log);
                 try
                 {
-                    clientSocket.Send(logPacket.Bytes);
+                    clientSocket.Send(logPacket);
                 }
                 catch (Exception e)
                 {
-                    Log.Error($"Error while trying to send log to socket: {e}{Environment.NewLine}Disconnecting socket.");
+                    Log.Error($"Error while trying to send log to socket: {e} {Environment.NewLine}Disconnecting socket.");
                     return;
                 }
 
@@ -82,25 +79,28 @@ internal class SendLogToClientSocket : ILogListener
                     _ = _logQueue.Dequeue();
                 }
             }
-
-            Thread.Sleep(17);
         }
+
     }
 
-    public void Dispose()
+    private void KillBepInExGUIProcess()
     {
-        _isDisposed = true;
-    }
-
-    internal void StoreLog(LogEventArgs eventArgs)
-    {
-        lock (_queueLock)
+        Log.Message("Closing BepInEx.GUI");
+        try
         {
-            _logQueue.Enqueue(eventArgs);
+            _process.Kill();
+            Logger.Listeners.Remove(EntryPoint.GUI_Sender);
+        }
+        catch (Exception e)
+        {
+            Log.Error($"Error while trying to kill BepInEx GUI Process: {e}");
+        }
+        finally
+        {
+            Dispose();
         }
     }
 
-    private bool _gotFirstLog = false;
     public void LogEvent(object sender, LogEventArgs eventArgs)
     {
         if (_isDisposed)
@@ -110,21 +110,26 @@ internal class SendLogToClientSocket : ILogListener
 
         if (eventArgs.Data == null)
         {
+            Log.Warning("EventArgs is potentialy null");
             return;
         }
 
-        if (!_gotFirstLog)
+        if ($"{eventArgs.Data}" != "Chainloader startup complete" || !eventArgs.Level.Equals(LogLevel.Message))
         {
-            if (eventArgs.Level == LogLevel.Message &&
-                eventArgs.Source.SourceName == "BepInEx" &&
-                eventArgs.Data.ToString().StartsWith("BepInEx"))
+            if (Config.CloseWindowWhenGameLoadedConfig.Value)
             {
-                _gotFirstLog = true;
+                KillBepInExGUIProcess();
+                return;
             }
         }
-        else
+
+        lock (_queueLock)
         {
-            StoreLog(eventArgs);
+            _logQueue.Enqueue(eventArgs);
         }
+    }
+    public void Dispose()
+    {
+        _isDisposed = true;
     }
 }

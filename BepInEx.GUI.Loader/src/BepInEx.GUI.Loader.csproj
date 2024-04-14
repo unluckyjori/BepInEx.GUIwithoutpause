@@ -4,14 +4,26 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>preview</LangVersion>
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <DebugType>embedded</DebugType>
+    <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./</PathMap>
+    <Optimize>false</Optimize>
   </PropertyGroup>
 
   <ItemGroup>
+    
     <PackageReference Include="BepInEx.Analyzers" Version="1.0.*">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="BepInEx.Core" Version="5.4.21" />
+
     <PackageReference Include="Microsoft.Unity.Analyzers" Version="1.10.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -22,6 +34,10 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+
+    <Reference Include="AsyncLoggers" Publicize="True">
+      <HintPath>C:\Program Files (x86)\r2modmanPlus-local\LethalCompany\profiles\Default\BepInEx\patchers\mattymatty-AsyncLoggers_Experimental\AsyncLoggers.dll</HintPath>
+    </Reference>
 
     <Reference Include="BepInEx">
       <HintPath>D:\Program Files (x86)\Games\r2modmanPlus-local\LethalCompany\profiles\Default\BepInEx\core\BepInEx.dll</HintPath>
