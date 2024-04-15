@@ -1,4 +1,5 @@
-﻿using BepInEx.Logging;
+﻿using System.Diagnostics;
+using BepInEx.Logging;
 using HarmonyLib;
 
 
@@ -9,38 +10,39 @@ public static class EventArgsPatchTest
 {
 
     [ThreadStatic]
-    private static DateTime? _timestamp;
+    private static Stopwatch? _timer;
 
-    public static DateTime? Timestamp
+    public static Stopwatch? Timer
     {
         get
         {
-            if (_timestamp != null)
-                return _timestamp;
-            return DateTime.UtcNow;
+            if (_timer != null)
+                return _timer;
+            return _timer = Stopwatch.StartNew();
         }
-        set => _timestamp = value;
+        set => _timer = value;
     }
 
     internal static string FormatTimestamp(DateTime? timestamp)
     {
-        return timestamp?.ToString("MM/dd/yyyy HH:mm:ss.fffffff");
+        return timestamp?.ToString("HH:mm:ss.fffffff");
     }
 
     internal static string FormatTimestamp()
     {
-        return Timestamp?.ToString("MM/dd/yyyy HH:mm:ss.fffffff");
+        return Timer?.Elapsed.ToString("HH:mm:ss.fffffff");
     }
 
     public static string ToString(LogEventArgs __instance)
     {
-        return $"[DO I DIE? {Timestamp?.ToString("MM/dd/yyyy HH:mm:ss.fffffff")}] [{__instance.Level,-7}:{__instance.Source.SourceName,10}] {__instance.Data}";
+        return $"[DO I DIE? {Timer?.Elapsed.ToString("MM/dd/yyyy HH:mm:ss.fffffff")}] [{__instance.Level,-7}:{__instance.Source.SourceName,10}] {__instance.Data}";
     }
+
     [HarmonyPrefix]
     [HarmonyPatch(nameof(LogEventArgs.ToString))]
     public static bool ToString(this LogEventArgs __instance, ref string __result)
     {
-        __result = $"[DO I DIE? {FormatTimestamp()}] [{__instance.Level,-7}:{__instance.Source.SourceName,10}] {__instance.Data}";
+        __result = $"[DO I DIE? ] [{__instance.Level,-7}:{__instance.Source.SourceName,10}] {__instance.Data}";
         return false;
     }
 }

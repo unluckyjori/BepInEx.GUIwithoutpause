@@ -65,7 +65,8 @@ impl LogReceiver {
                                                     "Error reading packet: {}\nDisconnecting socket",
                                                     err
                                                 );
-                                                break;
+                                                break;//DO NOT BREAK WHAT THE FUCK IS WRONG WITH YOU??????
+                                                //BEFORE REBUILDING merge changes to bepinex_gui branch from Laptop to github
                                             }
                                         }
                                     }

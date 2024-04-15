@@ -161,12 +161,9 @@ internal static class EntryPoint
         Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         try
         {
-            IPEndPoint localEP;
-
-            if (OnlySearchGUI_IP_Port)
-                localEP = new IPEndPoint(IPAddress.Parse("127.0.0.1"), port);
-            else
-                localEP = new IPEndPoint(IPAddress.Any, port);
+            IPEndPoint localEP = OnlySearchGUI_IP_Port
+                ? new IPEndPoint(IPAddress.Parse("127.0.0.1"), port)
+                : new IPEndPoint(IPAddress.Any, port);
 
             socket.Bind(localEP);
             localEP = (IPEndPoint)socket.LocalEndPoint;
