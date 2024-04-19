@@ -140,7 +140,7 @@ fn render_copy_log_file_button(
     font_size: f32,
 ) {
     if components::button("Copy Log File", ui, button_size, font_size) {
-        bepinex_log::file::open_file_explorer_to_file_and_zip_it_if_needed(
+        bepinex_log::file::open_file_in_file_explorer(
             bepinex_log_output_file_full_path,
             "zipped_log.zip",
         );

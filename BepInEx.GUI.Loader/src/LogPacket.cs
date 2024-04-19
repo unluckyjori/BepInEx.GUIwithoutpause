@@ -11,7 +11,7 @@ internal unsafe struct LogPacket
     // |Log String Byte Array Length | 0x0000|
     // |Log Level                    | 0x0004|
     // |Log String Byte Array        | 0x0008|
-    private LogEventArgs log;
+    private readonly LogEventArgs log;
 
     internal unsafe LogPacket(LogEventArgs log, string logString)
     {

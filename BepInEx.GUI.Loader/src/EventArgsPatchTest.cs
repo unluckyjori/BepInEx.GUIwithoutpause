@@ -1,32 +1,10 @@
-﻿using System.Diagnostics;
-using BepInEx.Logging;
-using HarmonyLib;
+﻿namespace BepInEx.GUI.Loader;
 
-
-namespace BepInEx.GUI.Loader;
-
+#if !RELEASE
 [HarmonyPatch(typeof(LogEventArgs))]
 public static class EventArgsPatchTest
 {
-
-    [ThreadStatic]
-    private static Stopwatch? _timer;
-
-    public static Stopwatch? Timer
-    {
-        get
-        {
-            if (_timer != null)
-                return _timer;
-            return _timer = Stopwatch.StartNew();
-        }
-        set => _timer = value;
-    }
-
-    internal static string FormatTimestamp(DateTime? timestamp)
-    {
-        return timestamp?.ToString("HH:mm:ss.fffffff");
-    }
+    public static Stopwatch Timer = Stopwatch.StartNew();
 
     internal static string FormatTimestamp()
     {
@@ -42,7 +20,7 @@ public static class EventArgsPatchTest
     [HarmonyPatch(nameof(LogEventArgs.ToString))]
     public static bool ToString(this LogEventArgs __instance, ref string __result)
     {
-        __result = $"[DO I DIE? ] [{__instance.Level,-7}:{__instance.Source.SourceName,10}] {__instance.Data}";
+        __result = $"[DO I DIE? {FormatTimestamp()}] [{__instance.Level,-7}:{__instance.Source.SourceName,10}] {__instance.Data}";
         return false;
     }
 }
@@ -188,3 +166,5 @@ public static class EventArgsPatchTest
 //                                  IL_0062: ldloc.2
 //	/* 0x00000967 2A           */ IL_0063: ret
 //} // end of method EventArgsPatchTest::ToString
+
+#endif

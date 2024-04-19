@@ -16,14 +16,14 @@ internal static class Log
             {
                 return -1;
             }
-            result = socket.Send(packet.Bytes
-                );//, 0, packet.Bytes.Length, SocketFlags.None, out SocketError errorCode);
-            //Debug(errorCode);
+            result = socket.Send(packet.Bytes);
         }
         catch (Exception e)
         {
+#if !RELEASE
             Error(socket);
             Error(packet); //packet is not the issue --ruled out by testing
+#endif
             throw new Exception($"What the fuck?{Environment.NewLine}{e}");
         }
 

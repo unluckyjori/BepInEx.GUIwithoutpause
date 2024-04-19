@@ -425,8 +425,8 @@ impl ConsoleTab {
             views::BepInExGUI::render_useful_buttons_footer(
                 ui,
                 ctx,
-                data.game_folder_full_path(),
-                data.bepinex_log_output_file_full_path(),
+                data.game_folder_path(),
+                data.log_output_file_path(),
                 data.target_process_id(),
             );
         });

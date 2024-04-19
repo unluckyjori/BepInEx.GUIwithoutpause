@@ -1,14 +1,5 @@
-use sysinfo::Pid;
-
-use eframe::CreationContext;
-use eframe::{self, *};
-
-use std::sync::{atomic::AtomicBool, Arc};
-use std::time::Duration;
-
-use crossbeam_channel::Receiver;
-
 use views::tabs::{console::ConsoleTab, general::GeneralTab, settings::SettingsTab, Tab};
+
 use crate::backend::{process, window};
 use crate::config::launch::AppLaunchConfig;
 use crate::config::Config;
@@ -18,7 +9,14 @@ use crate::data::bepinex_mod::BepInExMod;
 use crate::views::disclaimer::Disclaimer;
 use crate::{theme, views};
 
-pub const NAME: &str = "BepInExGUI";
+use crossbeam_channel::Receiver;
+use eframe::CreationContext;
+use eframe::{self, *};
+use std::sync::{atomic::AtomicBool, Arc};
+use std::time::Duration;
+use sysinfo::Pid;
+
+pub const NAME: &str = "BepInEx GUI";
 
 pub struct BepInExGUI {
     pub app_launch_config: AppLaunchConfig,
@@ -44,10 +42,6 @@ impl App for BepInExGUI {
         ctx.request_repaint_after(FPS_15);
 
         self.backend_update(frame);
-
-        // #[cfg(debug_assertions)]
-        // ctx.set_debug_on_hover(true);
-
         self.view_update(ctx, frame);
     }
 
@@ -94,13 +88,13 @@ impl BepInExGUI {
         window::window_topmost_on_target_start::init(self.app_launch_config.target_process_id());
 
         let (general_tab_mod_r, console_tab_mod_r, log_r) =
-            self.init_log_receiver(self.app_launch_config.log_socket_port_receiver());
+            self.init_log_receiver(self.app_launch_config.log_socket_port());
 
         self.init_tabs(general_tab_mod_r, console_tab_mod_r, log_r);
 
         self.config.bepinex_gui_csharp_cfg_full_path = self
             .app_launch_config
-            .bepinex_gui_csharp_cfg_full_path()
+            .gui_cfg_full_path()
             .clone();
 
         _ = self.config.read_bepinex_toml_cfg_file();

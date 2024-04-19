@@ -31,9 +31,12 @@ internal class SendLogToClientSocket : ILogListener
             IPAddress ipAddress = IPAddress.Parse(GUI_Socket_IP);
             TcpListener listener = new TcpListener(ipAddress, _freePort);
             listener.Start();
+#if !RELEASE
             Log.Info($"{PrefixLogs} Accepting Socket.");
+#endif
             for (int i = 0; i < 5; i++)
             {
+#if !RELEASE
                 if (i == 4)
                 {
                     Log.Warning($"{PrefixLogs} :: [i:{i} :: Last connection attempt] Accepting Socket.");
@@ -42,7 +45,7 @@ internal class SendLogToClientSocket : ILogListener
                 {
                     Log.Warning($"{PrefixLogs} :: [i:{i}] Accepting Socket.");
                 }
-
+#endif
                 Socket clientSocket = listener.AcceptSocket();
                 if (_isDisposed)
                 {
@@ -52,7 +55,9 @@ internal class SendLogToClientSocket : ILogListener
                 SendPacketsToClientUntilConnectionIsClosed(clientSocket);
                 Thread.Sleep(SLEEP_MILLISECONDS);
             }
+#if !RELEASE
             Log.Error($"{PrefixLogs} :: [Listener has encountered too many lost connections to GUI aborting connection]");
+#endif
         });
 
         _thread.Start();
@@ -71,6 +76,7 @@ internal class SendLogToClientSocket : ILogListener
                 break;
             }
 
+#if !RELEASE
             if (_hasFirstLog)
             {
                 if (!socket.Connected || !socket.IsBound)
@@ -80,6 +86,7 @@ internal class SendLogToClientSocket : ILogListener
                     Log.Debug($"[Socket {(socket.IsBound ? "Is Bound" : "Is not bound")}]");
                 }
             }
+#endif
 
             while (_logQueue.Count > 0)
             {
@@ -164,6 +171,7 @@ internal class SendLogToClientSocket : ILogListener
             _logQueue.Enqueue(eventArgs);
         }
     }
+
     public void Dispose()
     {
         _isDisposed = true;

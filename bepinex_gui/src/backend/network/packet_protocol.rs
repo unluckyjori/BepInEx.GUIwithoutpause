@@ -1,7 +1,5 @@
 use byteorder::{NativeEndian, ReadBytesExt};
-
 use std::io::{Cursor, Read};
-
 use std::mem::size_of;
 use std::net::TcpStream;
 

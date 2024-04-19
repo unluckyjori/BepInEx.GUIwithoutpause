@@ -35,8 +35,8 @@ impl GeneralTab {
             app::BepInExGUI::render_useful_buttons_footer(
                 ui,
                 ctx,
-                data.game_folder_full_path(),
-                data.bepinex_log_output_file_full_path(),
+                data.game_folder_path(),
+                data.log_output_file_path(),
                 data.target_process_id(),
             );
         });
@@ -92,7 +92,7 @@ impl Tab for GeneralTab {
             ui.with_layout(Layout::left_to_right(Align::default()), |ui| {
                 let target_is_loading_text = format!(
                     "Modded {} is loading, you can close this window at any time.",
-                    data.target_name()
+                    data.process_name()
                 );
                 ui.label(RichText::new(target_is_loading_text).font(FontId::proportional(20.0)));
             });

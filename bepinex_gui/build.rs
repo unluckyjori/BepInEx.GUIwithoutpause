@@ -10,5 +10,7 @@ fn main() {
     res.compile().unwrap();
 }
 
-#[cfg(unix)]
-fn main() {}
+#[cfg(unix)] 
+fn main() {
+    todo!()
+}

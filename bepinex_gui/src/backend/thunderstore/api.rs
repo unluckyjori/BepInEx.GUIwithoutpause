@@ -1,8 +1,6 @@
 use std::path::{Path, PathBuf};
-
+use sysinfo::Pid;
 use serde::{Deserialize, Serialize};
-use sysinfo::{Pid, ProcessExt, SystemExt};
-
 use crate::backend::file_explorer_utils;
 
 pub const URL: &str = "https://thunderstore.io/api/experimental/community/";
@@ -28,9 +26,8 @@ pub struct Result {
     pub require_package_listing_approval: Option<bool>,
 }
 
-fn find_modding_discord_from_target_process_name(
-    target_process_id: Pid,
-) -> std::result::Result<String, Box<dyn std::error::Error>> {
+fn find_modding_discord_from_target_process_name(target_process_id: Pid,)
+     -> std::result::Result<String, Box<dyn std::error::Error>> {
     let json = reqwest::blocking::get(URL).and_then(|resp| resp.text())?;
 
     let communities = serde_json::from_str::<Communities>(&json)

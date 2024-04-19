@@ -24,12 +24,10 @@ pub enum LogLevel {
 
 impl Numeric for LogLevel {
     const INTEGRAL: bool = true;
-
     const MIN: Self = Self::None;
-
     const MAX: Self = Self::All;
 
-    // this is needed for egui slider
+    /// this is needed for egui slider
     fn to_f64(self) -> f64 {
         match self {
             Self::None => 0.0,
@@ -43,7 +41,7 @@ impl Numeric for LogLevel {
         }
     }
 
-    // this is needed for egui slider
+    /// this is required for egui slider
     fn from_f64(num: f64) -> Self {
         match num {
             x if (0.0..1.0).contains(&x) => Self::None,

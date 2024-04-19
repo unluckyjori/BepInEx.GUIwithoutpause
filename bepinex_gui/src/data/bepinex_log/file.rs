@@ -1,3 +1,5 @@
+use crate::app;
+use crate::backend::file_explorer_utils;
 use std::{
     fs::{self, File},
     io::{BufReader, BufWriter},
@@ -5,33 +7,28 @@ use std::{
 };
 use zip::write::FileOptions;
 
-use crate::{backend::file_explorer_utils, paths};
-
-pub fn open_file_explorer_to_file_and_zip_it_if_needed(
-    file_full_path: &PathBuf,
-    zip_file_name: &str,
-) {
+pub fn open_file_in_file_explorer(file_full_path: &PathBuf, zip_file_name: &str) {
     if let Ok(file_metadata) = fs::metadata(file_full_path) {
         let file_size_bytes = file_metadata.len();
         const ONE_MEGABYTE: u64 = 1_000_000;
         // check log file size, if its more than size limit, just zip it
         if file_size_bytes >= ONE_MEGABYTE {
             let zip_file_full_path = file_full_path.parent().unwrap().join(zip_file_name);
-            match zip(&zip_file_full_path, file_full_path) {
+            match zip_file(&zip_file_full_path, file_full_path) {
                 Ok(_) => {
-                    file_explorer_utils::highlight_path_in_explorer(&zip_file_full_path);
+                    file_explorer_utils::highlight_path_in_file_explorer(&zip_file_full_path);
                 }
                 Err(e) => {
                     tracing::error!("Failed zipping: {}", e.to_string());
                 }
             }
         } else {
-            file_explorer_utils::highlight_path_in_explorer(file_full_path);
+            file_explorer_utils::highlight_path_in_file_explorer(file_full_path);
         }
     }
 }
 
-pub fn zip<P: AsRef<Path>, P2: AsRef<Path>>(
+pub fn zip_file<P: AsRef<Path>, P2: AsRef<Path>>(
     output_zip_file_path: P,
     input_log_file_path: P2,
 ) -> zip::result::ZipResult<()> {
@@ -47,19 +44,20 @@ pub fn zip<P: AsRef<Path>, P2: AsRef<Path>>(
     let mut log_file_buffer = BufReader::new(File::open(input_log_file_path)?);
     let mut zip_buf_writer = BufWriter::new(zip);
     std::io::copy(&mut log_file_buffer, &mut zip_buf_writer)?;
-
-    // zip.write_all()?;
-
-    // zip.finish()?;
     Ok(())
 }
 
-pub fn full_path() -> Option<PathBuf> {
-    if let Some(directory_full_path) = paths::get_app_config_directory() {
+pub fn get_full_path() -> Option<PathBuf> {
+    if let Some(directory_full_path) = get_app_config_directory() {
         if std::fs::create_dir_all(&directory_full_path).is_ok() {
             return Some(directory_full_path.join("log.txt"));
         }
     }
 
     None
+}
+
+pub fn get_app_config_directory() -> Option<PathBuf> {
+    directories_next::ProjectDirs::from("", "", app::NAME)
+        .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
 }

@@ -1,19 +1,13 @@
-use std::process::exit;
-
-use std::fs;
-
-use std::process::Command;
-
-use std::env;
-
 use crate::config;
-
 use super::process;
+use std:: {
+    env, fs, process::{exit, Command}
+};
 
-// Bad serialized app settings can sometimes make
-// the gui window not respond
-// bandaid fix that call winapi for checking if the window hung
-// and reset the process with a cleaned settings file if so
+/// Bad serialized app settings can sometimes make
+/// the gui window not respond
+/// bandaid fix that call winapi for checking if the window hung
+/// and reset the process with a cleaned settings file if so
 pub fn spawn_thread() {
     process::spawn_thread_check_if_process_is_hung(|| {
         if let Some(app_ron_file_path) = config::get_app_ron_file_full_path() {
