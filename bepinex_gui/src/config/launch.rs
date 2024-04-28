@@ -27,8 +27,9 @@ pub struct AppLaunchArgsInfo {
 impl Default for AppLaunchArgsInfo {
     fn default() -> Self {
         if DEBUG {
-            let (debug_log_socket_port_receiver, debug_target_process_id, debug_icon_path) =
-                (51730 as u16, Pid::from(24988), String::from("None"));
+            let (debug_target_process_id,debug_log_socket_port_receiver, debug_icon_path): (Pid, u16, String) =
+                (28244.into(), 53335 as u16, "None".into());
+                
             return Self {
                 process_name: "Lethal Company".into(),
                 bepinex_version: "5.4.2100".into(),

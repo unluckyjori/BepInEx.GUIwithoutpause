@@ -20,10 +20,6 @@ internal static class Log
         }
         catch (Exception e)
         {
-#if !RELEASE
-            Error(socket);
-            Error(packet); //packet is not the issue --ruled out by testing
-#endif
             throw new Exception($"What the fuck?{Environment.NewLine}{e}");
         }
 

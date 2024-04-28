@@ -7,7 +7,7 @@ use crate::data::bepinex_log::LogLevel;
 
 pub fn read_packet_length(tcp_stream: &mut TcpStream) -> Result<usize, std::io::Error> {
     const HEADER_SIZE: usize = size_of::<u32>();
-
+    
     let mut received_bytes = read_packet_internal(tcp_stream, HEADER_SIZE)?;
 
     let packet_length: usize =

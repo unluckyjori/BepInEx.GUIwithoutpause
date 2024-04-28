@@ -15,7 +15,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-	<PackageReference Include="BepInEx.Core" Version="5.4.21" >
+	<Compile Remove="Instances\**" />
+	<EmbeddedResource Remove="Instances\**" />
+	<None Remove="Instances\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<PackageReference Include="BepInEx.Core" Version="5.4.21">
 		<PrivateAssets>contentFiles; analyzers; build</PrivateAssets>
 		<IncludeAssets>all</IncludeAssets>
 	</PackageReference>
@@ -29,5 +35,38 @@
 	  <PrivateAssets>all</PrivateAssets>
 	  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 	</PackageReference>
+	
+	<PackageReference Include="System.Drawing.Common" Version="8.0.4" />
+	
+	<PackageReference Include="UnityEngine.Modules" Version="2022.3.9">
+	  <PrivateAssets>all</PrivateAssets>
+	  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	</PackageReference>
+
+	<PackageReference Include="Microsoft.Unity.Analyzers" Version="1.19.0">
+	  <PrivateAssets>all</PrivateAssets>
+	  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	</PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+	<ProjectReference Include="Instances\Instances\Instances.csproj" />
+
+
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="PowerShell.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>PowerShell.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="PowerShell.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>PowerShell.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>

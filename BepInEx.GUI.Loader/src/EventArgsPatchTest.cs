@@ -1,6 +1,6 @@
 ﻿namespace BepInEx.GUI.Loader;
 
-#if !RELEASE
+#if false
 [HarmonyPatch(typeof(LogEventArgs))]
 public static class EventArgsPatchTest
 {

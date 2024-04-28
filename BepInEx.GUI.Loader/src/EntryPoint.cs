@@ -6,8 +6,10 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Threading.Tasks;
 using BepInEx.Configuration;
 using BepInEx.Logging;
+using Instances;
 using Mono.Cecil;
 
 namespace BepInEx.GUI.Loader;
@@ -16,14 +18,13 @@ internal static class EntryPoint
 {
     public static IEnumerable<string> TargetDLLs { get; } = [];
     public static SendLogToClientSocket GUI_Sender;
-#if !RELEASE
-    public static Harmony _harmony;
+#if false
+	public static Harmony _harmony;
 #endif
 
     public const string GUID = $"{nameof(BepInEx)}.{nameof(GUI)}.{nameof(Loader)}";
     private const SearchOption searchOption = SearchOption.AllDirectories;
     private const string GuiFileFullName = "bepinex_gui.exe";
-    private const bool OnlySearchGUI_IP_Port = true;
     private const string searchPattern = "*";
 
 
@@ -52,16 +53,16 @@ internal static class EntryPoint
         }
     }
 
-#if !RELEASE
-    /// <summary>
-    /// Called after preloader has patched all assemblies and loaded them in
-    /// Called after preloader has patched all assemblies and loaded them in
-    /// </summary> 
-    public static void Finish()
-    {
-        _harmony = new Harmony(EntryPoint.GUID);
-        _harmony.PatchAll(typeof(EventArgsPatchTest));
-}
+#if false
+	/// <summary>
+	/// Called after preloader has patched all assemblies and loaded them in
+	/// Called after preloader has patched all assemblies and loaded them in
+	/// </summary> 
+	public static void Finish()
+	{
+		_harmony = new Harmony(EntryPoint.GUID);
+		_harmony.PatchAll(typeof(EventArgsPatchTest));
+	}
 #endif
 
     private static void InitializeInternal()
@@ -76,9 +77,8 @@ internal static class EntryPoint
 
         Type BepInExConsoleManager = typeof(BepInPlugin).Assembly.GetType("BepInEx.ConsoleManager", true);
 
-        ConfigEntry<bool> consoleConfig =
-            (ConfigEntry<bool>)BepInExConsoleManager.GetField("ConfigConsoleEnabled", BindingFlags.Static | BindingFlags.Public)
-            .GetValue(null);
+        ConfigEntry<bool> consoleConfig = BepInExConsoleManager.GetField("ConfigConsoleEnabled",
+            BindingFlags.Static | BindingFlags.Public).GetValue(null) as ConfigEntry<bool>;
 
         if (consoleConfig.Value && Config.AllowChangingConfigValues.Value)
         {
@@ -104,27 +104,71 @@ internal static class EntryPoint
             }
         }
         int freePort = FindFreePort();
-        ProcessStartInfo processStartInfo = LaunchGUI(executablePath, freePort);
-#if !RELEASE
-        return;
-#endif
-        Process process = Process.Start(processStartInfo);
+        ProcessArguments processStartInfo = new ProcessArguments(LaunchGUI(executablePath, freePort));
 
-        ///Potentials overhead
-        /// * parsing rust/c# strings for communication
-        ///var i = process.StandardInput;
-        ///var j = process.StandardOutput;
-        ///###
+        ProcessInstance process = processStartInfo.Start();
+        //process.OutputDataReceived += OutputDataReceived;
+        //process.ErrorDataReceived += ErrorDataReceived;
 
+        //C# = Target
+        //Rust = Host
         if (process == null)
         {
             Log.Info("LaunchGUI failed");
             return;
         }
-
         GUI_Sender = new SendLogToClientSocket(process, freePort);
         Logger.Listeners.Add(GUI_Sender);
+        //System.Threading.Thread _thread = new(async () =>
+        //{
+        //    Thread.Sleep(1500);
+        //    const string str = "Hello World from C# standart ";
+        //    await process.SendInputDataAsync($"{str}input");
+        //    await process.SendErrorDataAsync($"{str}error");
+        //    string a = await process.GetProcess().StandardOutput.ReadToEndAsync();
+        //    Log.Error($"FOUND ERROR IN STANDART ERROR: {a} YIPPEEEEEEE");
+        //});
+        //process.GetProcess().CancelErrorRead();
+        //process.GetProcess().CancelOutputRead();
+        //System.Threading.Thread __thread = new(() =>
+        //{
+        //    Thread.Sleep(1500);
+        //    const string str = "Hello World from C# standart ";
+        //    process.SendInputData($"{str}input");
+        //    process.SendErrorData($"{str}error");
+        //    string a = process.GetProcess().StandardOutput.ReadToEnd();
+        //    Log.Error($"FOUND ERROR IN STANDART ERROR: {a} YIPPEEEEEEE");
+        //});
+
     }
+
+    private static bool receivedStdErr = false;
+    private static bool receivedStdOut = false;
+    private static void OutputDataReceived(object sender, string data)
+    {
+        if (receivedStdOut)
+        {
+
+        }
+        Log.Warning($"{sender} || {data}");
+        receivedStdOut = true;
+    }
+    private static void ErrorDataReceived(object sender, string data)
+    {
+        if (receivedStdErr)
+        {
+
+        }
+        Log.Error($"{sender} || {data}");
+        receivedStdErr = true;
+    }
+    //Process ---->
+    //Stream Readers
+    //std::inputData
+    //std::inputError
+    //Stream Writers
+    //std::outputData
+    //std::outputError
 
     /// <summary>
     /// Faster more relayable method using good assumptions
@@ -209,23 +253,36 @@ internal static class EntryPoint
 
     private static ProcessStartInfo LaunchGUI(string executablePath, int port)
     {
-        string arg8 = SaveIcon();
+        DirectoryInfo icon_dir = new DirectoryInfo(Path.Combine(Paths.GameRootPath, "BepInEx.GUI.Icon"));
+        if (!icon_dir.Exists)
+        {
+            icon_dir.Create();
+        }
+
+        string icon = SavedIcon(icon_dir);
+        SaveIcon(icon_dir).Wait();
+        if (icon == null)
+            icon = SaveIcon(icon_dir).Result;
+        if (icon == null)
+            icon = SavedIcon(icon_dir);
+        if (icon == null)
+            icon = "None";
+
         string[] argList =
         [
             $"\"{typeof(Paths).Assembly.GetName().Version}\" ", //arg[1] Version
-            $"\"{Paths.ProcessName}\" ",                        //arg[2] Target name
-            $"\"{Paths.GameRootPath}\" ",                       //arg[3] Game folder -P -F
-            $"\"{Paths.BepInExRootPath}\\LogOutput.log\" ",     //arg[4] BepInEx output -P -F
-            $"\"{Config.ConfigFilePath}\" ",                    //arg[5] ConfigPath
-            $"\"{Process.GetCurrentProcess().Id}\" ",           //arg[6] Process Id
-            $"\"{port}\" ",                                     //arg[7] socket port reciver
-            $"\"{arg8}\""
+			$"\"{Paths.ProcessName}\" ",                        //arg[2] Target name
+			$"\"{Paths.GameRootPath}\" ",                       //arg[3] Game folder -P -F
+			$"\"{Paths.BepInExRootPath}\\LogOutput.log\" ",     //arg[4] BepInEx output -P -F
+			$"\"{Config.ConfigFilePath}\" ",                    //arg[5] ConfigPath
+			$"\"{Process.GetCurrentProcess().Id}\" ",           //arg[6] Process Id
+			$"\"{port}\" ",                                     //arg[7] socket port reciver
+			$"\"{icon}\""
         ];
 
-#if !RELEASE
         foreach (string arg in argList)
-                Log.Fatal(arg);
-#endif
+            Log.Fatal(arg);
+
         string args = string.Empty;
         foreach (string arg in argList)
             args += arg;
@@ -239,32 +296,68 @@ internal static class EntryPoint
 
         return processStartInfo;
     }
+    private static async Task<string> SaveIcon(DirectoryInfo icon_dir)
+    {
+        string powershell = icon_dir.FullName;
+        if (!powershell.EndsWith('\\'))
+        {
+            powershell += '\\';
+        }
+        powershell += "CopyInfo.ps1";
+
+        string icon_file = icon_dir.FullName;
+        if (!icon_file.EndsWith('\\'))
+        {
+            icon_file += '\\';
+        }
+        icon_file += "icon.png";
+        if (!await SaveShell(powershell, icon_file))
+        {
+            return null;
+        }
+
+
+        ProcessArguments shellargs = new ProcessArguments("powershell.exe",
+            $"-NoProfile -ExecutionPolicy ByPass -File \"{powershell}\"");
+        ProcessInstance shell = shellargs.Start();
+
+        shell.ErrorDataReceived += delegate (object _, string data)
+        {
+            if (data == "Script is done")
+            {
+                shell.Kill();
+            }
+        };
+
+        return icon_file;
+    }
+
     /// <param name="path"></param>
     /// <param name="dir">Game Directory</param>
     /// <param name="name"></param>
     /// <returns>the path to the icon file</returns>
     /// ProcessName = Path.GetFileNameWithoutExtension(executablePath);
     /// eg ..\..\..\Lethal Company.exe = Lethal Company
-    public static string SaveIcon()
+    public static string SavedIcon(DirectoryInfo icon_dir)
     {
-        string icon_dir = $"{Paths.GameRootPath}{(Paths.GameRootPath.EndsWith('\\') ? string.Empty : "\\")}icon.";
-
-        string icon_file = IconIsSaved(icon_dir);
-        if (icon_file != null)
+        string icon_file = icon_dir.FullName;
+        if (!icon_file.EndsWith('\\'))
         {
-            Log.Info("Icon was already saved");
-            return icon_file;
+            icon_file += '\\';
         }
+        icon_file += "icon.";
 
-        return "None";
+        string icon_path = SavedIcon(icon_file);
+
+        return icon_path;
     }
 
-    private static string IconIsSaved(string icon_file_path)
+    private static string SavedIcon(string icon_file)
     {
         string[] SupportedFileExtensions = ["png", "ico", "jpeg", "jpg", "gif", "webp", "tiff"];
         foreach (string ext in SupportedFileExtensions)
         {
-            string icon = $"{icon_file_path}{ext}";
+            string icon = $"{icon_file}{ext}";
             if (File.Exists(icon))
             {
                 Log.Warning($"Icon already exists at path: {icon}");
@@ -275,54 +368,29 @@ internal static class EntryPoint
         return null;
     }
 
-#if !RELEASE
-    /// <summary>
-    /// the icon representation of an image that is contained in the specified file.
-    /// </summary>
-    /// <param name="path">the path to the icon</param>
-    /// <returns>The icon of the path if it exists</returns>
-    private static System.Drawing.Icon ExtractIconFromFilePath(string path)
+
+    private static async Task<bool> SaveShell(string powershell, string icon_file)
     {
-        System.Drawing.Icon result = null;
+        if (File.Exists(powershell))
+        {
+            return true;
+        }
 
+        string Shell = $"{PowerShell.Script}Export-Icon -Path \"{Paths.ExecutablePath}\" -Destination \"{icon_file}\" ";
+
+        FileStream fileStream = File.Create(powershell);
         try
         {
-            result = System.Drawing.Icon.ExtractAssociatedIcon(path);
+            UTF8Encoding UTF8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+            byte[] bytes = UTF8.GetBytes(Shell);
+            await fileStream.WriteAsync(bytes, 0, bytes.Length);
+            await fileStream.FlushAsync();
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            Log.Warning($"Unable to extract the icon from the binary{Environment.NewLine}{e}");
+            return File.Exists(powershell);
         }
 
-        return result;
+        return true;
     }
-#endif
-
-    //DEAD CODE for untill i figure out a fix to the System.Drawing.Common Issue
-#if false
-        System.Drawing.Icon icon = ExtractIconFromFilePath(Paths.ExecutablePath);
-
-        if (icon == null)
-        {
-            Log.Warning("Failed to exctract the Icon from the game executable");
-            return "None";
-        }
-
-        try
-        {
-            using (FileStream stream = new FileStream(icon_dir, FileMode.CreateNew))
-            {
-                icon.ToBitmap().Save(stream, System.Drawing.Imaging.ImageFormat.Png);
-                stream.Close();
-            }
-        }
-
-        catch (Exception e)
-        {
-            Log.Debug($"Failed to save icon or somehow the saved icon was missed{Environment.NewLine}{e}");
-            return "None";
-        }
-
-        return icon_dir;
-#endif
 }

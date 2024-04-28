@@ -1,14 +1,14 @@
-﻿using System.Diagnostics;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using BepInEx.Logging;
+using Instances;
 
 namespace BepInEx.GUI.Loader;
 
 internal class SendLogToClientSocket : ILogListener
 {
-    private readonly Process _process;
+    private readonly IProcessInstance _process;
     private readonly Thread _thread;
 
     private readonly Queue<LogEventArgs> _logQueue = new();
@@ -22,7 +22,7 @@ internal class SendLogToClientSocket : ILogListener
     private bool _hasFirstLog = false;
     private bool _isDisposed = false;
 
-    internal SendLogToClientSocket(Process process, int freePort)
+    internal SendLogToClientSocket(IProcessInstance process, int freePort)
     {
         _process = process;
         _freePort = freePort;
@@ -54,6 +54,7 @@ internal class SendLogToClientSocket : ILogListener
 
                 SendPacketsToClientUntilConnectionIsClosed(clientSocket);
                 Thread.Sleep(SLEEP_MILLISECONDS);
+
             }
 #if !RELEASE
             Log.Error($"{PrefixLogs} :: [Listener has encountered too many lost connections to GUI aborting connection]");
@@ -75,18 +76,6 @@ internal class SendLogToClientSocket : ILogListener
             {
                 break;
             }
-
-#if !RELEASE
-            if (_hasFirstLog)
-            {
-                if (!socket.Connected || !socket.IsBound)
-                {
-                    Log.Debug($"{PrefixLogs} :: [Connection failure] :: Socket has lost connection with the GUI");
-                    Log.Debug($"[Socket {(socket.Connected ? "Is Connected" : "Is not Connected")}]");
-                    Log.Debug($"[Socket {(socket.IsBound ? "Is Bound" : "Is not bound")}]");
-                }
-            }
-#endif
 
             while (_logQueue.Count > 0)
             {
@@ -157,9 +146,9 @@ internal class SendLogToClientSocket : ILogListener
             }
         }
 
-        if ($"{eventArgs.Data}" != "Chainloader startup complete" || !eventArgs.Level.Equals(LogLevel.Message))
+        if (Config.CloseWindowWhenGameLoadedConfig.Value)
         {
-            if (Config.CloseWindowWhenGameLoadedConfig.Value)
+            if ($"{eventArgs.Data}" != "Chainloader startup complete" || !eventArgs.Level.Equals(LogLevel.Message))
             {
                 KillBepInExGUIProcess();
                 return;
