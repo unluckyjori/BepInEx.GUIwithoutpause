@@ -3,10 +3,12 @@ use crossbeam_channel::Receiver;
 use eframe::{egui::*, *};
 
 use std::{
-    collections::HashMap, sync::{
+    collections::HashMap,
+    sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
-    }, time::SystemTime
+    },
+    time::SystemTime,
 };
 
 use crate::{
@@ -44,48 +46,53 @@ impl LogSelection {
         ui: &Ui,
         log_index: usize,
     ) {
-        if self.button_currently_down {
-            let mut log_rect = ui_log_entry.rect;
-            // make it so that just selecting anywhere within the log line work
-            log_rect.max.x = clip_rect.max.x;
-            // make it so that there is no dead space between the log entries for log selection purposes
-            log_rect.min.y += 4.;
-            log_rect.max.y += 4.;
+        if !self.button_currently_down {
+            return;
+        }
+        let mut log_rect = ui_log_entry.rect;
+        // make it so that just selecting anywhere within the log line work
+        log_rect.max.x = clip_rect.max.x;
+        // make it so that there is no dead space between the log entries for log selection purposes
+        log_rect.min.y += 4.;
+        log_rect.max.y += 4.;
 
-            if ui.rect_contains_pointer(log_rect) {
-                if self.button_just_got_down {
-                    let is_a_new_pressed_log = self.index_of_first_selected_log != log_index;
-                    if is_a_new_pressed_log {
-                        self.index_of_first_selected_log = log_index;
-                        self.index_of_last_selected_log = log_index;
-                    } else {
-                        // we just pressed the same button, unselect all
-                        self.index_of_first_selected_log = usize::MAX;
-                        self.index_of_last_selected_log = usize::MAX;
+        if !ui.rect_contains_pointer(log_rect) && self.button_just_got_down {
+            self.index_of_first_selected_log = usize::MAX;
+            self.index_of_last_selected_log = usize::MAX;
+            return;
+        }
 
-                        // we remember the last unselected button,
-                        // because the user may still hold the button and it may instantly reselect it the next frame
-                        self.index_of_last_unselected_log = log_index;
-                    }
-                } else {
-                    // user is holding the button, and hovering a log entry
-
-                    let user_is_holding_and_selecting_a_new_log =
-                        self.index_of_last_unselected_log != log_index;
-                    if user_is_holding_and_selecting_a_new_log {
-                        self.index_of_last_selected_log = log_index;
-
-                        // fix an edge case where the user just unselected a log,
-                        // and is now selecting the one just above or just below,
-                        // all within the same keypress / kept holding
-                        if self.index_of_first_selected_log == usize::MAX {
-                            self.index_of_first_selected_log = log_index;
-                        }
-                    }
+        if self.button_just_got_down {
+            let is_a_new_pressed_log = self.index_of_first_selected_log != log_index;
+            match is_a_new_pressed_log {
+                true => {
+                    self.index_of_first_selected_log = log_index;
+                    self.index_of_last_selected_log = log_index;
                 }
-            } else if self.button_just_got_down {
-                self.index_of_first_selected_log = usize::MAX;
-                self.index_of_last_selected_log = usize::MAX;
+                false => {
+                    // we just pressed the same button, unselect all
+                    self.index_of_first_selected_log = usize::MAX;
+                    self.index_of_last_selected_log = usize::MAX;
+
+                    // we remember the last unselected button,
+                    // because the user may still hold the button and it may instantly reselect it the next frame
+                    self.index_of_last_unselected_log = log_index;
+                }
+            }
+            return;
+        }
+        // user is holding the button, and hovering a log entry
+
+        let user_is_holding_and_selecting_a_new_log =
+            self.index_of_last_unselected_log != log_index;
+        if user_is_holding_and_selecting_a_new_log {
+            self.index_of_last_selected_log = log_index;
+
+            // fix an edge case where the user just unselected a log,
+            // and is now selecting the one just above or just below,
+            // all within the same keypress / kept holding
+            if self.index_of_first_selected_log == usize::MAX {
+                self.index_of_first_selected_log = log_index;
             }
         }
     }
@@ -151,17 +158,13 @@ impl ConsoleTab {
                 last_log_count: 0,
                 pending_scroll: None,
             },
-            
         }
     }
 
     fn render(&mut self, gui_config: &Config, ctx: &Context) {
-        CentralPanel::default().show(ctx, |ui| {
-            if self.logs.is_empty() {
-                render_loading_text(ui);
-            } else {
-                self.render_console_scroll_area(ui, gui_config);
-            }
+        CentralPanel::default().show(ctx, |ui| match self.logs.is_empty() {
+            true => render_loading_text(ui),
+            false => self.render_console_scroll_area(ui, gui_config),
         });
     }
 
@@ -192,14 +195,17 @@ impl ConsoleTab {
         ui: &mut Ui,
     ) {
         if let Some(cursor_pos) = self.log_selection.cursor_pos_when_button_was_pressed {
-            if self.log_selection.button_currently_down
+            match self.log_selection.button_currently_down
                 && scroll_area.inner_rect.contains(cursor_pos)
             {
-                self.scroll.pending_scroll =
-                    views::utils::egui::scroll_when_trying_to_select_stuff_above_or_under_rect(
-                        ui,
-                        scroll_area.inner_rect,
-                    );
+                true => {
+                    self.scroll.pending_scroll =
+                        views::utils::egui::scroll_when_trying_to_select_stuff_above_or_under_rect(
+                            ui,
+                            scroll_area.inner_rect,
+                        )
+                }
+                false => (),
             }
         }
     }
@@ -214,44 +220,47 @@ impl ConsoleTab {
     fn render_logs(&mut self, gui_config: &Config, ui: &mut eframe::egui::Ui) {
         let clip_rect = ui.painter().clip_rect();
 
-        let info_log_color = if gui_config.dark_mode {
-            Color32::WHITE
-        } else {
-            Color32::BLACK
+        let info_log_color = match gui_config.dark_mode {
+            true => Color32::WHITE,
+            false => Color32::BLACK,
         };
 
         let log_count = self.logs.len();
         let last_log_count = self.scroll.last_log_count;
         let mut filtered = false;
         for i in 0..log_count {
-            if  i > last_log_count 
-            &&  Self::render_log(
-                &mut self.log_heights,
-                &mut self.filter,
-                gui_config,
-                info_log_color,
-                i,
-                ui,
-                &clip_rect,
-                &mut self.log_selection,
-                &mut self.logs[i],
-                &self.mods) { 
-                    filtered = true;
-                }
+            if i > last_log_count
+                && Self::render_log(
+                    &mut self.log_heights,
+                    &mut self.filter,
+                    gui_config,
+                    info_log_color,
+                    i,
+                    ui,
+                    &clip_rect,
+                    &mut self.log_selection,
+                    &mut self.logs[i],
+                    &self.mods,
+                )
+            {
+                filtered = true;
+            }
             self.logs[i].is_selected = is_between(
                 i,
                 self.log_selection.index_of_first_selected_log,
                 self.log_selection.index_of_last_selected_log,
             );
         }
-        if gui_config.log_auto_scroll_to_bottom
+        if !(gui_config.log_auto_scroll_to_bottom
             && last_log_count != log_count
-            && !self.log_selection.button_just_got_down
+            && !self.log_selection.button_just_got_down)
         {
-            if !filtered {
-                ui.scroll_with_delta(Vec2::new(0., f32::NEG_INFINITY));
-                self.scroll.last_log_count = log_count;
-            }
+            return;
+        }
+
+        if !filtered {
+            ui.scroll_with_delta(Vec2::new(0., f32::NEG_INFINITY));
+            self.scroll.last_log_count = log_count;
         }
     }
 
@@ -298,6 +307,7 @@ impl ConsoleTab {
         if !Self::does_log_match_text_filter(&filter.text_lowercase, log) {
             return false;
         }
+        
         if !Self::does_log_match_mod_filter(&mods[filter.selected_index_in_mods_combo_box], log) {
             return false;
         }
@@ -331,8 +341,7 @@ impl ConsoleTab {
     }
 
     fn does_log_match_text_filter(text_filter_lowercase: &String, log: &BepInExLogEntry) -> bool {
-        if text_filter_lowercase.is_empty()
-            || log.data_lowercase().contains(text_filter_lowercase)
+        if text_filter_lowercase.is_empty() || log.data_lowercase().contains(text_filter_lowercase)
         {
             return true;
         }
@@ -342,16 +351,14 @@ impl ConsoleTab {
 
     fn does_log_match_mod_filter(mod_filter: &BepInExMod, log: &BepInExLogEntry) -> bool {
         let mod_name = &mod_filter.name().to_lowercase();
-        if mod_name.is_empty()
-        {
+        if mod_name.is_empty() {
             return true;
         }
         let logger_name = &Self::get_real_name(log.data_lowercase().as_str());
-        if  logger_name.contains(mod_name) && !logger_name.is_empty()
-        {
+        if logger_name.contains(mod_name) && !logger_name.is_empty() {
             return true;
         }
-        if  logger_name.is_empty() {
+        if logger_name.is_empty() {
             return true;
         }
         let mut logger_name_sanitized = String::new();
@@ -366,7 +373,7 @@ impl ConsoleTab {
                 mod_name_sanitized.push(i);
             }
         }
-        if  logger_name_sanitized.contains(&mod_name_sanitized) {
+        if logger_name_sanitized.contains(&mod_name_sanitized) {
             return true;
         }
         false
@@ -385,9 +392,9 @@ impl ConsoleTab {
                 return mod_name.to_string();
             }
         }
-        if  s.contains('[') {
+        if s.contains('[') {
             let split: Vec<&str> = s.split("[").collect();
-            let logged_info = split[1];//split[0] == ""// should be at least
+            let logged_info = split[1]; //split[0] == ""// should be at least
             let log: Vec<&str> = logged_info.split(':').collect();
             //ainavt.lc.lethalconfig]
             //Lethal Company Input Utils]
@@ -403,7 +410,6 @@ impl ConsoleTab {
         }
         String::new()
     }
-
 
     fn render_footer(&mut self, data: &AppLaunchConfig, gui_config: &mut Config, ctx: &Context) {
         TopBottomPanel::bottom("footer").show(ctx, |ui| {
@@ -497,10 +503,9 @@ Please use the buttons below and use the "Copy Log File" button, and drag and dr
     }
 
     fn render_pause_game_button(&mut self, ui: &mut Ui, data: &AppLaunchConfig) -> Vec2 {
-        let pause_game_btn_text = if self.target_process_paused {
-            "Resume Game"
-        } else {
-            "Pause Game"
+        let pause_game_btn_text = match self.target_process_paused {
+            true => "Resume Game",
+            false => "Pause Game",
         };
         let pause_game_btn_size =
             views::utils::egui::compute_text_size(ui, pause_game_btn_text, true, false, None);
@@ -520,10 +525,9 @@ Please use the buttons below and use the "Copy Log File" button, and drag and dr
         {
             let target_process_id = data.target_process_id();
 
-            if self.target_process_paused {
-                self.target_process_paused = !process::resume(target_process_id);
-            } else {
-                self.target_process_paused = process::suspend(target_process_id);
+            match self.target_process_paused {
+                true => self.target_process_paused = !process::resume(target_process_id),
+                false => self.target_process_paused = process::suspend(target_process_id),
             }
         }
         pause_game_btn_size
@@ -539,10 +543,9 @@ Please use the buttons below and use the "Copy Log File" button, and drag and dr
             .add_sized(
                 mods_combo_box.rect.size(),
                 TextEdit::singleline(&mut self.filter.text)
-                    .text_color(if gui_config.dark_mode {
-                        Color32::WHITE
-                    } else {
-                        Color32::BLACK
+                    .text_color(match gui_config.dark_mode {
+                        true => Color32::WHITE,
+                        false => Color32::BLACK,
                     })
                     .hint_text(
                         WidgetText::from("Filter Text").color(ui.style().visuals.text_color()),
@@ -591,11 +594,9 @@ fn make_log_render_decision(
             ui.add_space(height);
             return LogRenderDecision::SkipAndFakeRender;
         }
-    } else {
-        return LogRenderDecision::RenderAndCacheHeight;
+        return LogRenderDecision::RenderNormally;
     }
-
-    LogRenderDecision::RenderNormally
+    return LogRenderDecision::RenderAndCacheHeight;
 }
 
 fn render_loading_text(ui: &mut Ui) {
@@ -668,14 +669,15 @@ impl Tab for ConsoleTab {
         self.update_mod_receiver();
         self.update_log_receiver();
 
-        if gui_config.first_time_console_disclaimer {
-            self.render_console_first_time_disclaimer(ctx, gui_config);
-        } else {
-            self.render_footer(data, gui_config, ctx);
+        match gui_config.first_time_console_disclaimer {
+            true => self.render_console_first_time_disclaimer(ctx, gui_config),
+            false => {
+                self.render_footer(data, gui_config, ctx);
 
-            self.render(gui_config, ctx);
+                self.render(gui_config, ctx);
 
-            self.update_copy_logs_to_clipboard(ctx);
+                self.update_copy_logs_to_clipboard(ctx);
+            }
         }
 
         if ctx.input(|i| i.modifiers.command) && ctx.input(|i| i.key_pressed(Key::F5)) {
@@ -684,14 +686,12 @@ impl Tab for ConsoleTab {
     }
 }
 
-
-    fn render_auto_scroll_to_bottom_checkbox(ui: &mut Ui, gui_config: &mut Config) {
-        ui.checkbox(
-            &mut gui_config.log_auto_scroll_to_bottom,
-            "Auto Scroll to Bottom",
-        );
-    }
-
+fn render_auto_scroll_to_bottom_checkbox(ui: &mut Ui, gui_config: &mut Config) {
+    ui.checkbox(
+        &mut gui_config.log_auto_scroll_to_bottom,
+        "Auto Scroll to Bottom",
+    );
+}
 
 impl ConsoleTab {
     fn update_mod_receiver(&mut self) {
