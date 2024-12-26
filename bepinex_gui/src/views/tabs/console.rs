@@ -502,36 +502,36 @@ Please use the buttons below and use the "Copy Log File" button, and drag and dr
         }
     }
 
-    fn render_pause_game_button(&mut self, ui: &mut Ui, data: &AppLaunchConfig) -> Vec2 {
-        let pause_game_btn_text = match self.target_process_paused {
-            true => "Resume Game",
-            false => "Pause Game",
-        };
-        let pause_game_btn_size =
-            views::utils::egui::compute_text_size(ui, pause_game_btn_text, true, false, None);
+// fn render_pause_game_button(&mut self, ui: &mut Ui, data: &AppLaunchConfig) -> Vec2 {
+//     let pause_game_btn_text = match self.target_process_paused {
+//         true => "Resume Game",
+//         false => "Pause Game",
+//     };
+//     let pause_game_btn_size =
+//         views::utils::egui::compute_text_size(ui, pause_game_btn_text, true, false, None);
 
-        ui.add_space(
-            ui.spacing()
-                .item_spacing
-                .x
-                .mul_add(-2., ui.available_width() - pause_game_btn_size.x),
-        );
+//     ui.add_space(
+//         ui.spacing()
+//             .item_spacing
+//             .x
+//             .mul_add(-2., ui.available_width() - pause_game_btn_size.x),
+//     );
 
-        if ui
-            .add(Button::new(
-                RichText::new(pause_game_btn_text).text_style(egui::TextStyle::Heading),
-            ))
-            .clicked()
-        {
-            let target_process_id = data.target_process_id();
+//     if ui
+//         .add(Button::new(
+//             RichText::new(pause_game_btn_text).text_style(egui::TextStyle::Heading),
+//         ))
+//         .clicked()
+//     {
+//         let target_process_id = data.target_process_id();
 
-            match self.target_process_paused {
-                true => self.target_process_paused = !process::resume(target_process_id),
-                false => self.target_process_paused = process::suspend(target_process_id),
-            }
-        }
-        pause_game_btn_size
-    }
+//         match self.target_process_paused {
+//             true => self.target_process_paused = !process::resume(target_process_id),
+//             false => self.target_process_paused = process::suspend(target_process_id),
+//         }
+//     }
+//     pause_game_btn_size
+// }
 
     fn render_log_text_filter_input(
         &mut self,
