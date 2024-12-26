@@ -648,7 +648,7 @@ impl Tab for ConsoleTab {
 
                 ui.set_cursor(cur_cursor_rect);
 
-                let pause_game_btn_size = self.render_pause_game_button(ui, data);
+//                let pause_game_btn_size = self.render_pause_game_button(ui, data);
 
                 ui.set_cursor(cur_cursor_rect);
 
