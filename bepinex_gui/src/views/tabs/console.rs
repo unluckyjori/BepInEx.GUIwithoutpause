@@ -652,7 +652,7 @@ impl Tab for ConsoleTab {
 
                 ui.set_cursor(cur_cursor_rect);
 
-                self.render_kill_gui_and_game_button(ui, pause_game_btn_size, data);
+                self.render_kill_gui_and_game_button(ui, data);
             });
         });
     }
